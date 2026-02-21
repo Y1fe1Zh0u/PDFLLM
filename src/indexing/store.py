@@ -148,6 +148,56 @@ class VectorStore:
 
         return results
 
+    def search_by_section(
+        self,
+        query_embedding: np.ndarray,
+        section_keywords: list[str],
+        top_k: int | None = None,
+        doc_id: str | None = None,
+    ) -> list[tuple[Chunk, float]]:
+        """在匹配section关键词的chunks子集内做向量检索
+
+        Args:
+            query_embedding: 查询向量
+            section_keywords: 任一关键词出现在section中即匹配
+            top_k: 返回结果数量
+            doc_id: 过滤特定文档
+
+        Returns:
+            (Chunk, score) 元组列表，按相似度降序
+        """
+        if self.index is None or self.index.ntotal == 0:
+            return []
+
+        top_k = top_k or settings.top_k
+
+        # 找到匹配section关键词的chunk索引
+        candidate_indices = []
+        for i, chunk in enumerate(self.chunks):
+            if doc_id and chunk.doc_id != doc_id:
+                continue
+            if any(kw in chunk.section for kw in section_keywords):
+                candidate_indices.append(i)
+
+        if not candidate_indices:
+            return []
+
+        # 用reconstruct取向量，计算相似度
+        query = query_embedding.reshape(-1).astype(np.float32)
+        scored = []
+        for i in candidate_indices:
+            vec = self.index.reconstruct(i)
+            score = float(np.dot(query, vec))
+            scored.append((i, score))
+
+        # 按相似度降序排列，取top_k
+        scored.sort(key=lambda x: x[1], reverse=True)
+        results = []
+        for i, score in scored[:top_k]:
+            results.append((self.chunks[i], score))
+
+        return results
+
     def get_indexed_doc_ids(self) -> set[str]:
         """获取已索引的所有doc_id"""
         return {c.doc_id for c in self.chunks}

@@ -106,3 +106,85 @@ class TestVectorStore:
             store = VectorStore(index_dir=tmpdir)
             store.build(_make_chunks(2, doc_id="a") + _make_chunks(3, doc_id="b"))
             assert store.get_indexed_doc_ids() == {"a", "b"}
+
+
+@patch("src.indexing.store.embed_texts", _fake_embed_texts)
+class TestVectorStoreBySection:
+    """search_by_section方法测试"""
+
+    def _make_section_chunks(self):
+        """创建包含不同section的chunks"""
+        return [
+            Chunk(doc_id="doc1", chunk_id=0, text="收购方为深赤湾", page=1, section="交易概述"),
+            Chunk(doc_id="doc1", chunk_id=1, text="交易金额50亿", page=2, section="交易方案"),
+            Chunk(doc_id="doc1", chunk_id=2, text="估值采用收益法", page=3, section="评估方法"),
+            Chunk(doc_id="doc1", chunk_id=3, text="业绩承诺三年", page=4, section="承诺与补偿"),
+            Chunk(doc_id="doc1", chunk_id=4, text="行业发展趋势", page=5, section="行业分析"),
+        ]
+
+    def test_section_filter(self):
+        """匹配section关键词的chunks应被正确过滤"""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            store = VectorStore(index_dir=tmpdir)
+            store.build(self._make_section_chunks())
+
+            query_vec = _fake_embed_text("估值方法")
+            results = store.search_by_section(
+                query_vec, section_keywords=["评估"], top_k=3
+            )
+            assert len(results) >= 1
+            # 所有结果的section都应包含关键词
+            for chunk, score in results:
+                assert any(kw in chunk.section for kw in ["评估"])
+
+    def test_multiple_keywords(self):
+        """多个关键词应匹配任一即可"""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            store = VectorStore(index_dir=tmpdir)
+            store.build(self._make_section_chunks())
+
+            query_vec = _fake_embed_text("交易信息")
+            results = store.search_by_section(
+                query_vec, section_keywords=["交易", "方案"], top_k=5
+            )
+            assert len(results) >= 2
+            sections = [c.section for c, _ in results]
+            assert "交易概述" in sections
+            assert "交易方案" in sections
+
+    def test_no_matching_section(self):
+        """无匹配section应返回空列表"""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            store = VectorStore(index_dir=tmpdir)
+            store.build(self._make_section_chunks())
+
+            query_vec = _fake_embed_text("不存在的内容")
+            results = store.search_by_section(
+                query_vec, section_keywords=["不存在的章节"], top_k=3
+            )
+            assert results == []
+
+    def test_doc_id_filter(self):
+        """doc_id过滤应生效"""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            store = VectorStore(index_dir=tmpdir)
+            chunks = self._make_section_chunks() + [
+                Chunk(doc_id="doc2", chunk_id=0, text="另一个文档的交易", page=1, section="交易概述"),
+            ]
+            store.build(chunks)
+
+            query_vec = _fake_embed_text("交易")
+            results = store.search_by_section(
+                query_vec, section_keywords=["交易"], top_k=5, doc_id="doc1"
+            )
+            assert all(c.doc_id == "doc1" for c, _ in results)
+
+    def test_empty_store(self):
+        """空store应返回空列表"""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            store = VectorStore(index_dir=tmpdir)
+            query_vec = _fake_embed_text("测试")
+            results = store.search_by_section(
+                query_vec, section_keywords=["测试"], top_k=3
+            )
+            assert results == []

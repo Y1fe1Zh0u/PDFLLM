@@ -32,3 +32,32 @@ def search_chunks(
     results = store.search(query_embedding, top_k=top_k, doc_id=doc_id)
     logger.debug(f"查询'{query[:30]}...' 返回 {len(results)} 结果")
     return results
+
+
+def search_chunks_by_section(
+    store: VectorStore,
+    query: str,
+    section_keywords: list[str],
+    top_k: int | None = None,
+    doc_id: str | None = None,
+) -> list[tuple[Chunk, float]]:
+    """在匹配section关键词的chunks子集内检索
+
+    Args:
+        store: 向量存储实例
+        query: 查询文本
+        section_keywords: section过滤关键词
+        top_k: 返回结果数量
+        doc_id: 过滤特定文档
+
+    Returns:
+        (Chunk, score) 元组列表，按相似度降序
+    """
+    query_embedding = embed_text(query)
+    results = store.search_by_section(
+        query_embedding, section_keywords, top_k=top_k, doc_id=doc_id
+    )
+    logger.debug(
+        f"章节检索'{query[:30]}...' keywords={section_keywords} 返回 {len(results)} 结果"
+    )
+    return results

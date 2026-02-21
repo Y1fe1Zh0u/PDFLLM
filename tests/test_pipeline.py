@@ -56,10 +56,12 @@ MOCK_PURPOSE = {
 
 @patch("src.indexing.store.embed_texts", _fake_embed_texts)
 @patch("src.indexing.search.embed_text", _fake_embed_text)
+@patch("src.extraction.extractor.embed_text", _fake_embed_text)
+@patch("src.extraction.extractor.chat_raw", return_value="")
 @patch("src.extraction.extractor.chat_json")
 @patch("src.pipeline.extract_pages", return_value=MOCK_PAGES)
 class TestProcessSinglePdf:
-    def test_success(self, mock_extract, mock_chat, tmp_path):
+    def test_success(self, mock_extract, mock_chat, mock_raw, tmp_path):
         def _chat_side_effect(system, user, **kw):
             if "交易概要" in system:
                 return MOCK_DEAL
@@ -84,7 +86,7 @@ class TestProcessSinglePdf:
         assert record is not None
         assert record.deal_summary.acquirer == "测试公司A"
 
-    def test_empty_pdf(self, mock_extract, mock_chat, tmp_path):
+    def test_empty_pdf(self, mock_extract, mock_chat, mock_raw, tmp_path):
         mock_extract.return_value = []
 
         from src.indexing.store import VectorStore
@@ -112,9 +114,11 @@ class TestRunPipeline:
 
     @patch("src.indexing.store.embed_texts", _fake_embed_texts)
     @patch("src.indexing.search.embed_text", _fake_embed_text)
+    @patch("src.extraction.extractor.embed_text", _fake_embed_text)
+    @patch("src.extraction.extractor.chat_raw", return_value="")
     @patch("src.extraction.extractor.chat_json")
     @patch("src.pipeline.extract_pages", return_value=MOCK_PAGES)
-    def test_resume_skips_processed(self, mock_extract, mock_chat, tmp_path):
+    def test_resume_skips_processed(self, mock_extract, mock_chat, mock_raw, tmp_path):
         mock_chat.return_value = MOCK_DEAL
 
         from src.indexing.store import VectorStore

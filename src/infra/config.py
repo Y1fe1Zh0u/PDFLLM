@@ -40,6 +40,9 @@ class Settings(BaseSettings):
 
     # 检索配置
     top_k: int = 8
+    enable_multi_round: bool = True      # 是否启用多轮fallback
+    hyde_temperature: float = 0.7        # HyDE生成温度（高于抽取的0.1）
+    hyde_max_tokens: int = 256           # HyDE假设答案最大token
 
     # 日志
     log_level: str = "INFO"
