@@ -5,6 +5,7 @@ __pycache__/
 *.so
 .Python
 venv/
+.venv/
 env/
 ENV/
 build/
@@ -36,18 +37,16 @@ wheels/
 .env.*.local
 
 # Data & Uploads
-data/
-uploads/
-*.pdf
-*.xlsx
-*.xls
+data/uploads/*.pdf
+data/outputs/
+data/index/
+raw-data/
 
 # Logs
 logs/
 *.log
 
 # Vector DB
-faiss_index/
 *.index
 
 # Cache
@@ -56,9 +55,11 @@ faiss_index/
 
 # Jupyter
 .ipynb_checkpoints/
-*.ipynb
 
 # Test
 .pytest_cache/
 .coverage
 htmlcov/
+
+# Ruff
+.ruff_cache/
