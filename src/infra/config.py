@@ -40,9 +40,15 @@ class Settings(BaseSettings):
 
     # 检索配置
     top_k: int = 8
-    enable_multi_round: bool = True      # 是否启用多轮fallback
-    hyde_temperature: float = 0.7        # HyDE生成温度（高于抽取的0.1）
-    hyde_max_tokens: int = 256           # HyDE假设答案最大token
+
+    # 多轮fallback检索配置
+    # 整体开关：关闭后extract_field()退回到原始的"单query全局搜索+单次LLM抽取"行为
+    enable_multi_round: bool = True
+    # HyDE（Hypothetical Document Embeddings）生成假设文本的温度
+    # 设为0.7比抽取的0.1高很多，是为了让LLM生成更多样化的假设段落以提升检索召回率
+    hyde_temperature: float = 0.7
+    # HyDE假设答案的最大token数，100-200字中文约对应150-250 token
+    hyde_max_tokens: int = 256
 
     # 日志
     log_level: str = "INFO"
